@@ -1,7 +1,7 @@
 ﻿{
-  "txnId": "S1",
+  "txnId": "S2",
   "customerId": "priya",
-  "amount": 15000.00,
+  "amount": 30000.00,
   "merchantId": "MUMBAI-M1",
   "merchantCategory": "5411",
   "timestampMs": 1758870000000,
