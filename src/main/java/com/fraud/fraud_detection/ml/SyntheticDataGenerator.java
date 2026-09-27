@@ -4,18 +4,12 @@ import com.fraud.fraud_detection.features.FeatureExtractor;
 import com.fraud.fraud_detection.features.TxnContext;
 import com.fraud.fraud_detection.model.CustomerProfile;
 import com.fraud.fraud_detection.model.Transaction;
+import com.fraud.fraud_detection.rules.RuleEngine;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
-/**
- * Simulates a card portfolio with realistic (noisy, overlapping) fraud.
- * Returns a Dataset with extracted features and labels.
- *
- * Replace with your real historical data in production — the training
- * pipeline is unchanged.
- */
 public final class SyntheticDataGenerator {
 
     private record City(String name, String country, double lat, double lon) {
@@ -57,12 +51,14 @@ public final class SyntheticDataGenerator {
     public static Dataset generate(int nCustomers, int txnsPerCustomer,
             double fraudRate, long seed) {
         Random rnd = new Random(seed);
+        RuleEngine ruleEngine = new RuleEngine();
 
         List<double[]> feats = new ArrayList<>();
+        List<Double> ruleScores = new ArrayList<>();
         List<Integer> labels = new ArrayList<>();
 
         long now = System.currentTimeMillis();
-        long windowMs = 90L * 24 * 3600 * 1000; // 90-day window
+        long windowMs = 90L * 24 * 3600 * 1000;
 
         for (int c = 0; c < nCustomers; c++) {
             City home = CITIES[rnd.nextInt(CITIES.length)];
@@ -75,7 +71,7 @@ public final class SyntheticDataGenerator {
             String homeDevice = "DEV-" + rnd.nextInt(1_000_000);
             profile.addKnownDevice(homeDevice);
 
-            double avgAmount = 500 + rnd.nextDouble() * 4500; // INR-scale
+            double avgAmount = 500 + rnd.nextDouble() * 4500;
             long t = now - windowMs + (long) (rnd.nextDouble() * windowMs * 0.4);
 
             int made = 0;
@@ -85,16 +81,14 @@ public final class SyntheticDataGenerator {
                 t += (long) (Math.exp(rnd.nextGaussian() * 0.9) * 5 * 3600_000L);
 
                 if (rnd.nextDouble() >= fraudRate) {
-                    // ---- legitimate activity -------------------------------------
                     if (hourUtc(t) < 6 && rnd.nextDouble() < 0.7)
                         t += 6 * 3600_000L;
 
                     Transaction tx = legit(rnd, customerId, seq++, home, homeDevice, avgAmount, t);
-                    capture(feats, labels, tx, profile, 0);
+                    capture(feats, ruleScores, labels, ruleEngine, tx, profile, 0);
                     profile.record(tx);
                     made++;
                 } else {
-                    // ---- fraud campaign: 1-3 rapid transactions -------------------
                     int burst = 1 + rnd.nextInt(3);
                     FraudGeo geo = FRAUD_GEOS[rnd.nextInt(FRAUD_GEOS.length)];
                     boolean goAbroad = rnd.nextDouble() < 0.75;
@@ -128,7 +122,7 @@ public final class SyntheticDataGenerator {
                                 "M-" + rnd.nextInt(50_000), mcc, t, lat, lon,
                                 rnd.nextDouble() < 0.15, fraudDevice, country);
 
-                        capture(feats, labels, tx, profile, 1);
+                        capture(feats, ruleScores, labels, ruleEngine, tx, profile, 1);
                         profile.record(tx);
                         made++;
                     }
@@ -136,15 +130,14 @@ public final class SyntheticDataGenerator {
             }
         }
 
-        return toDataset(feats, labels);
+        return toDataset(feats, ruleScores, labels);
     }
 
     private static Transaction legit(Random rnd, String customerId, int seq, City home,
             String homeDevice, double avgAmount, long t) {
         double amount = Math.max(1.0, avgAmount * Math.exp(rnd.nextGaussian() * 0.6));
 
-        // Occasional large legitimate purchase: electronics, travel, wedding gifts.
-        // ~3% of legit transactions are 8-30x the customer average.
+        // ~3% of legit transactions are large (electronics, travel, wedding)
         if (rnd.nextDouble() < 0.03) {
             amount = avgAmount * (8 + rnd.nextDouble() * 22);
         }
@@ -153,11 +146,9 @@ public final class SyntheticDataGenerator {
         double lon = home.lon() + rnd.nextGaussian() * 0.15;
         String country = home.country();
 
-        // occasional genuine cross-border purchase
-        if (rnd.nextDouble() < 0.02) {
+        if (rnd.nextDouble() < 0.02)
             country = CITIES[rnd.nextInt(CITIES.length)].country();
-        }
-        // occasional domestic travel
+
         if (rnd.nextDouble() < 0.03) {
             lat = home.lat() + rnd.nextGaussian() * 4;
             lon = home.lon() + rnd.nextGaussian() * 4;
@@ -171,28 +162,33 @@ public final class SyntheticDataGenerator {
                 "M-" + rnd.nextInt(50_000), mcc, t, lat, lon, cardPresent, device, country);
     }
 
-    private static void capture(List<double[]> feats, List<Integer> labels,
+    private static void capture(List<double[]> feats, List<Double> ruleScores,
+            List<Integer> labels, RuleEngine ruleEngine,
             Transaction tx, CustomerProfile profile, int label) {
         TxnContext ctx = TxnContext.of(tx, profile);
         feats.add(FeatureExtractor.extract(ctx));
+        ruleScores.add(ruleEngine.score(ruleEngine.evaluate(ctx)));
         labels.add(label);
     }
 
-    private static Dataset toDataset(List<double[]> feats, List<Integer> labels) {
+    private static Dataset toDataset(List<double[]> feats, List<Double> ruleScores,
+            List<Integer> labels) {
         int n = feats.size();
         double[][] X = feats.toArray(new double[0][]);
+        double[] rs = new double[n];
         int[] y = new int[n];
-        for (int i = 0; i < n; i++)
+        for (int i = 0; i < n; i++) {
+            rs[i] = ruleScores.get(i);
             y[i] = labels.get(i);
-        return new Dataset(X, y);
+        }
+        return new Dataset(X, rs, y);
     }
 
     private static int hourUtc(long t) {
         return (int) ((t / 3600_000L) % 24);
     }
 
-    /** Container for feature matrix + labels. */
-    public record Dataset(double[][] X, int[] y) {
+    public record Dataset(double[][] X, double[] ruleScores, int[] y) {
 
         public int size() {
             return y.length;
@@ -206,7 +202,6 @@ public final class SyntheticDataGenerator {
             return c;
         }
 
-        /** Returns {train, val, test} with the given split fractions. */
         public Dataset[] split(double trainFrac, double valFrac, long seed) {
             int n = size();
             int[] idx = new int[n];
@@ -234,13 +229,15 @@ public final class SyntheticDataGenerator {
         private Dataset take(int[] idx, int from, int to) {
             int m = to - from;
             double[][] x = new double[m][];
+            double[] rs = new double[m];
             int[] labels = new int[m];
             for (int i = 0; i < m; i++) {
                 int src = idx[from + i];
                 x[i] = X[src];
+                rs[i] = ruleScores[src];
                 labels[i] = y[src];
             }
-            return new Dataset(x, labels);
+            return new Dataset(x, rs, labels);
         }
     }
 }

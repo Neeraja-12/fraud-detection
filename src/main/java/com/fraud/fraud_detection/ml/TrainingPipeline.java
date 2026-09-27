@@ -7,12 +7,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Arrays;
 
-/**
- * Trains a logistic-regression fraud model end-to-end, saves weights to
- * ./data/trained-model.txt, and reports test-set metrics.
- */
 @Service
 public class TrainingPipeline {
 
@@ -25,10 +20,9 @@ public class TrainingPipeline {
     private static final long SPLIT_SEED = 7L;
 
     public record TrainResult(
-            int trainSize, int valSize, int testSize,
-            int positives,
+            int trainSize, int valSize, int testSize, int positives,
             double precision, double recall, double f1,
-            double prAucRules, double prAucModel, double prAucBlended,
+            double prAucModel,
             double mlWeight, double threshold,
             double[] weights, double bias,
             double[] scalerMean, double[] scalerStd,
@@ -38,14 +32,12 @@ public class TrainingPipeline {
     public TrainResult run() {
         long start = System.currentTimeMillis();
 
-        // 1. Generate data
         System.out.println("[train] generating synthetic data...");
         SyntheticDataGenerator.Dataset data = SyntheticDataGenerator.generate(
                 N_CUSTOMERS, TXNS_PER_CUST, FRAUD_RATE, DATA_SEED);
         System.out.printf("[train] generated %,d transactions (%,d fraud, %.2f%%)%n",
                 data.size(), data.positives(), 100.0 * data.positives() / data.size());
 
-        // 2. Split
         SyntheticDataGenerator.Dataset[] parts = data.split(0.70, 0.15, SPLIT_SEED);
         SyntheticDataGenerator.Dataset train = parts[0];
         SyntheticDataGenerator.Dataset val = parts[1];
@@ -54,37 +46,35 @@ public class TrainingPipeline {
         System.out.printf("[train] split: train=%,d  val=%,d  test=%,d%n",
                 train.size(), val.size(), test.size());
 
-        // 3. Fit scaler on training data only
+        // Fit scaler on training data
         StandardScaler scaler = new StandardScaler();
         scaler.fit(train.X());
         double[][] Xtr = scaler.transform(train.X());
 
-        // 4. Class weight for imbalanced data
         int pos = train.positives();
         int neg = train.size() - pos;
         double positiveWeight = Math.min(20.0, (double) neg / Math.max(1, pos));
         System.out.printf("[train] class balance: pos=%,d neg=%,d (weight=%.2f)%n",
                 pos, neg, positiveWeight);
 
-        // 5. Train
         System.out.println("[train] fitting logistic regression...");
         LogisticRegression lr = new LogisticRegression(FeatureExtractor.N_FEATURES, 1e-3);
         lr.fit(Xtr, train.y(), 1500, 0.5, positiveWeight);
 
-        // 6. Tune blend weight + threshold on validation set
+        // Tune mlWeight + threshold on validation set — now using REAL rule scores
         double[] valMl = new double[val.size()];
         for (int i = 0; i < val.size(); i++) {
             valMl[i] = lr.probability(scaler.transform(val.X()[i]));
         }
+        double[] valRules = val.ruleScores();
 
-        double[] WEIGHT_GRID = { 0.0, 0.25, 0.5, 0.65, 0.8, 1.0 };
+        double[] WEIGHT_GRID = { 0.0, 0.25, 0.4, 0.5, 0.6, 0.7, 0.75, 0.8, 1.0 };
         double bestF1 = -1.0, bestW = 0.65, bestT = 0.5;
-
         for (double w : WEIGHT_GRID) {
-            for (double t = 0.05; t < 0.95; t += 0.01) {
+            for (double t = 0.10; t < 0.90; t += 0.01) {
                 int[] pred = new int[val.size()];
                 for (int i = 0; i < val.size(); i++) {
-                    double s = w * valMl[i] + (1 - w) * 0.0; // rules not evaluated here
+                    double s = w * valMl[i] + (1 - w) * valRules[i];
                     pred[i] = s >= t ? 1 : 0;
                 }
                 double f1 = Metrics.confusion(val.y(), pred).f1();
@@ -98,19 +88,20 @@ public class TrainingPipeline {
         System.out.printf("[train] tuned: mlWeight=%.2f  threshold=%.2f  valF1=%.3f%n",
                 bestW, bestT, bestF1);
 
-        // 7. Evaluate on test set
+        // Evaluate on test set
         double[] testMl = new double[test.size()];
+        double[] testBlended = new double[test.size()];
         for (int i = 0; i < test.size(); i++) {
             testMl[i] = lr.probability(scaler.transform(test.X()[i]));
+            testBlended[i] = bestW * testMl[i] + (1 - bestW) * test.ruleScores()[i];
         }
-        int[] pred = Metrics.threshold(testMl, bestT);
+        int[] pred = Metrics.threshold(testBlended, bestT);
         Metrics.Confusion cm = Metrics.confusion(test.y(), pred);
-        double prAuc = Metrics.averagePrecision(testMl, test.y());
+        double prAuc = Metrics.averagePrecision(testBlended, test.y());
 
         System.out.printf("[train] test precision=%.3f  recall=%.3f  f1=%.3f  pr-auc=%.3f%n",
                 cm.precision(), cm.recall(), cm.f1(), prAuc);
 
-        // 8. Save to disk
         try {
             save(lr, scaler, bestW, bestT);
             System.out.println("[train] saved weights to " + MODEL_FILE.toAbsolutePath());
@@ -121,24 +112,21 @@ public class TrainingPipeline {
         long elapsed = System.currentTimeMillis() - start;
 
         return new TrainResult(
-                train.size(), val.size(), test.size(),
-                data.positives(),
-                cm.precision(), cm.recall(), cm.f1(),
-                0.0, prAuc, 0.0,
+                train.size(), val.size(), test.size(), data.positives(),
+                cm.precision(), cm.recall(), cm.f1(), prAuc,
                 bestW, bestT,
                 lr.weights(), lr.bias(),
                 scaler.mean(), scaler.std(),
                 elapsed);
     }
 
-    /** Writes the model as plain text — easy to inspect and diff. */
     public static void save(LogisticRegression lr, StandardScaler scaler,
             double mlWeight, double threshold) throws IOException {
         Files.createDirectories(MODEL_FILE.getParent());
 
         StringBuilder sb = new StringBuilder();
-        sb.append("# Fraud model — trained by TrainingPipeline\n");
-        sb.append("# format: key=value  (values are comma-separated doubles where applicable)\n");
+        sb.append("# Fraud model - trained by TrainingPipeline\n");
+        sb.append("# format: key=value\n");
         sb.append("mlWeight=").append(mlWeight).append('\n');
         sb.append("threshold=").append(threshold).append('\n');
         sb.append("bias=").append(lr.bias()).append('\n');
@@ -159,7 +147,6 @@ public class TrainingPipeline {
         return sb.toString();
     }
 
-    /** Loads a previously-saved model. Returns null if not present. */
     public static LoadedModel load() {
         if (!Files.exists(MODEL_FILE))
             return null;
@@ -185,7 +172,6 @@ public class TrainingPipeline {
                     case "scalerStd" -> std = parse(val);
                 }
             }
-
             if (weights == null || mean == null || std == null)
                 return null;
             return new LoadedModel(weights, bias, mean, std, mlWeight, threshold);
@@ -207,7 +193,6 @@ public class TrainingPipeline {
             double[] weights, double bias,
             double[] scalerMean, double[] scalerStd,
             double mlWeight, double threshold) {
-
         public String summary() {
             return "mlWeight=%.2f threshold=%.2f bias=%.2f weights=%d values"
                     .formatted(mlWeight, threshold, bias, weights.length);
