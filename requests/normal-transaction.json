@@ -1,0 +1,13 @@
+﻿{
+  "txnId": "N1",
+  "customerId": "rajesh",
+  "amount": 1500.00,
+  "merchantId": "M1",
+  "merchantCategory": "5411",
+  "timestampMs": 1758820000000,
+  "latitude": 19.0760,
+  "longitude": 72.8777,
+  "cardPresent": true,
+  "deviceId": "rajesh-phone",
+  "countryCode": "IN"
+}

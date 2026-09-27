@@ -1,0 +1,13 @@
+﻿{
+  "txnId": "F1",
+  "customerId": "rajesh",
+  "amount": 85000.00,
+  "merchantId": "LONDON-M1",
+  "merchantCategory": "6051",
+  "timestampMs": 1758863700000,
+  "latitude": 51.5074,
+  "longitude": -0.1278,
+  "cardPresent": false,
+  "deviceId": "UNKNOWN-DEVICE",
+  "countryCode": "GB"
+}

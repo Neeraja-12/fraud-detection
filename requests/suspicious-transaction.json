@@ -1,0 +1,13 @@
+﻿{
+  "txnId": "S1",
+  "customerId": "priya",
+  "amount": 15000.00,
+  "merchantId": "MUMBAI-M1",
+  "merchantCategory": "5411",
+  "timestampMs": 1758870000000,
+  "latitude": 19.0760,
+  "longitude": 72.8777,
+  "cardPresent": false,
+  "deviceId": "priya-phone",
+  "countryCode": "IN"
+}
