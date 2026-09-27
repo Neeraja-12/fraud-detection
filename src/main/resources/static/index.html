@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Fraud Detection Console</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+    margin: 0; padding: 0;
+    background: #0f172a; color: #e2e8f0;
+    min-height: 100vh;
+  }
+  header {
+    padding: 20px 32px;
+    background: #1e293b;
+    border-bottom: 1px solid #334155;
+  }
+  header h1 { margin: 0; font-size: 20px; font-weight: 600; }
+  header p  { margin: 4px 0 0; font-size: 13px; color: #94a3b8; }
+
+  main {
+    display: grid;
+    grid-template-columns: 420px 1fr;
+    gap: 20px;
+    padding: 24px;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+  @media (max-width: 960px) { main { grid-template-columns: 1fr; } }
+
+  .card {
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 10px;
+    padding: 20px;
+  }
+  .card h2 {
+    margin: 0 0 16px; font-size: 15px;
+    text-transform: uppercase; letter-spacing: 0.5px;
+    color: #94a3b8;
+  }
+
+  label { display: block; font-size: 12px; margin: 12px 0 4px; color: #94a3b8; }
+  input, select {
+    width: 100%; padding: 9px 11px;
+    background: #0f172a; color: #e2e8f0;
+    border: 1px solid #334155; border-radius: 6px;
+    font-size: 13px; font-family: inherit;
+  }
+  input:focus, select:focus { outline: none; border-color: #38bdf8; }
+
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+  button {
+    width: 100%; padding: 11px;
+    margin-top: 18px;
+    background: #38bdf8; color: #0f172a;
+    border: none; border-radius: 6px;
+    font-size: 14px; font-weight: 600; cursor: pointer;
+  }
+  button:hover { background: #7dd3fc; }
+  button:disabled { background: #475569; cursor: wait; }
+
+  .presets { display: flex; gap: 8px; margin-top: 12px; }
+  .presets button {
+    margin-top: 0; font-size: 12px; padding: 7px;
+    background: #334155; color: #cbd5e1;
+  }
+  .presets button:hover { background: #475569; }
+
+  /* --- result panel --- */
+  .decision {
+    padding: 24px; border-radius: 10px; text-align: center;
+    margin-bottom: 20px;
+  }
+  .decision .label { font-size: 13px; text-transform: uppercase; letter-spacing: 1.5px; opacity: 0.8; }
+  .decision .value { font-size: 42px; font-weight: 800; margin: 6px 0; letter-spacing: 2px; }
+  .decision .meta  { font-size: 13px; opacity: 0.9; }
+
+  .decision.ALLOW  { background: linear-gradient(135deg,#065f46,#10b981); }
+  .decision.REVIEW { background: linear-gradient(135deg,#78350f,#f59e0b); }
+  .decision.BLOCK  { background: linear-gradient(135deg,#7f1d1d,#ef4444); }
+  .decision.none   { background: #1e293b; border: 1px dashed #334155; opacity: 0.6; }
+
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px; }
+  .stat {
+    background: #0f172a; padding: 12px; border-radius: 8px;
+    border: 1px solid #334155; text-align: center;
+  }
+  .stat .n { font-size: 22px; font-weight: 700; }
+  .stat .l { font-size: 11px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; }
+
+  .rules li {
+    list-style: none; padding: 10px 12px; margin-bottom: 6px;
+    background: #0f172a; border-left: 3px solid #ef4444;
+    border-radius: 4px; font-size: 13px;
+  }
+  .rules li .name { font-weight: 600; color: #f87171; }
+  .rules li .detail { color: #94a3b8; margin-left: 6px; }
+
+  .features li {
+    list-style: none; display: flex; justify-content: space-between;
+    padding: 8px 12px; margin-bottom: 4px;
+    background: #0f172a; border-radius: 4px; font-size: 13px;
+  }
+  .features li span:last-child { color: #38bdf8; font-family: monospace; }
+
+  .error {
+    padding: 12px; background: #7f1d1d; border-radius: 6px;
+    font-size: 13px; color: #fecaca;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🛡️ AI Banking Fraud Detection</h1>
+  <p>Live scoring console &mdash; enter a transaction and get an instant fraud decision</p>
+</header>
+
+<main>
+
+  <!-- LEFT: input form -->
+  <section class="card">
+    <h2>Transaction</h2>
+
+    <label>API Key</label>
+    <input id="apiKey" value="demo-key-123">
+
+    <label>Customer ID</label>
+    <input id="customerId" value="alice">
+
+    <div class="row">
+      <div>
+        <label>Amount</label>
+        <input id="amount" type="number" step="0.01" value="52.30">
+      </div>
+      <div>
+        <label>MCC</label>
+        <input id="mcc" value="5411">
+      </div>
+    </div>
+
+    <div class="row">
+      <div>
+        <label>Latitude</label>
+        <input id="lat" type="number" step="0.0001" value="40.7128">
+      </div>
+      <div>
+        <label>Longitude</label>
+        <input id="lon" type="number" step="0.0001" value="-74.0060">
+      </div>
+    </div>
+
+    <div class="row">
+      <div>
+        <label>Device ID</label>
+        <input id="deviceId" value="alice-phone">
+      </div>
+      <div>
+        <label>Country</label>
+        <input id="country" value="US" maxlength="3">
+      </div>
+    </div>
+
+    <label>Card Present?</label>
+    <select id="cardPresent">
+      <option value="true">Yes</option>
+      <option value="false">No (card-not-present)</option>
+    </select>
+
+    <button id="scoreBtn" onclick="score()">Score Transaction</button>
+
+    <div class="presets">
+      <button onclick="preset('normal')">Normal</button>
+      <button onclick="preset('suspicious')">Suspicious</button>
+      <button onclick="preset('fraud')">Fraud</button>
+    </div>
+  </section>
+
+  <!-- RIGHT: result -->
+  <section>
+    <div class="card">
+      <h2>Decision</h2>
+
+      <div id="decision" class="decision none">
+        <div class="label">Awaiting input</div>
+        <div class="value">—</div>
+        <div class="meta">Click "Score Transaction"</div>
+      </div>
+
+      <div class="stats">
+        <div class="stat"><div class="n" id="riskPts">—</div><div class="l">Risk Points</div></div>
+        <div class="stat"><div class="n" id="mlProb">—</div><div class="l">ML Prob</div></div>
+        <div class="stat"><div class="n" id="ruleScore">—</div><div class="l">Rule Score</div></div>
+      </div>
+
+      <div id="errorBox" class="error" style="display:none;"></div>
+
+      <h2 style="margin-top:24px;">Rule Hits</h2>
+      <ul id="rules" class="rules"><li style="border:none;background:transparent;color:#64748b;">None</li></ul>
+
+      <h2 style="margin-top:24px;">Top Model Features</h2>
+      <ul id="features" class="features"><li style="background:transparent;color:#64748b;">—</li></ul>
+    </div>
+  </section>
+
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+
+function preset(kind) {
+  if (kind === 'normal') {
+    $('customerId').value = 'rajesh';
+    $('amount').value = 2500.00;  $('mcc').value = '5411';
+    $('lat').value = 19.0760;     $('lon').value = 72.8777;
+    $('deviceId').value = 'rajesh-phone';  $('country').value = 'IN';
+    $('cardPresent').value = 'true';
+  } else if (kind === 'suspicious') {
+    $('customerId').value = 'priya';
+    $('amount').value = 15000.00; $('mcc').value = '5411';
+    $('lat').value = 28.6139;     $('lon').value = 77.2090;   // Delhi
+    $('deviceId').value = 'priya-phone';  $('country').value = 'IN';
+    $('cardPresent').value = 'false';
+  } else {
+    $('customerId').value = 'vikram';
+    $('amount').value = 85000.00; $('mcc').value = '6051';
+    $('lat').value = 51.5074;     $('lon').value = -0.1278;
+    $('deviceId').value = 'unknown-device'; $('country').value = 'GB';
+    $('cardPresent').value = 'false';
+  }
+}
+async function score() {
+  const btn = $('scoreBtn');
+  btn.disabled = true;
+  btn.textContent = 'Scoring…';
+  $('errorBox').style.display = 'none';
+
+  const body = {
+    txnId: 'WEB-' + Date.now(),
+    customerId: $('customerId').value,
+    amount: parseFloat($('amount').value),
+    merchantId: 'WEB-M1',
+    merchantCategory: $('mcc').value,
+    timestampMs: Date.now(),
+    latitude: parseFloat($('lat').value),
+    longitude: parseFloat($('lon').value),
+    cardPresent: $('cardPresent').value === 'true',
+    deviceId: $('deviceId').value,
+    countryCode: $('country').value
+  };
+
+  try {
+    const res = await fetch('/api/score', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-API-Key': $('apiKey').value
+      },
+      body: JSON.stringify(body)
+    });
+
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(res.status + ' ' + res.statusText + ' — ' + text.slice(0, 200));
+    }
+
+    const data = await res.json();
+    render(data);
+  } catch (e) {
+    $('errorBox').style.display = 'block';
+    $('errorBox').textContent = '⚠ ' + e.message;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Score Transaction';
+  }
+}
+
+function render(d) {
+  const box = $('decision');
+  box.className = 'decision ' + d.decision;
+  box.innerHTML = `
+    <div class="label">${d.decision === 'ALLOW' ? 'Approved' :
+                        d.decision === 'REVIEW' ? 'Manual Review' :
+                        'Blocked'}</div>
+    <div class="value">${d.decision}</div>
+    <div class="meta">${d.txnId}</div>
+  `;
+
+  $('riskPts').textContent   = d.riskPoints;
+  $('mlProb').textContent    = (d.mlProbability * 100).toFixed(1) + '%';
+  $('ruleScore').textContent = (d.ruleScore * 100).toFixed(1) + '%';
+
+  const rulesUl = $('rules');
+  if (!d.ruleHits || d.ruleHits.length === 0) {
+    rulesUl.innerHTML = '<li style="border:none;background:transparent;color:#64748b;">No rules triggered</li>';
+  } else {
+    rulesUl.innerHTML = d.ruleHits.map(r =>
+      `<li><span class="name">${r.rule}</span><span class="detail">${r.detail}</span></li>`
+    ).join('');
+  }
+
+  const featUl = $('features');
+  if (!d.topFeatures || d.topFeatures.length === 0) {
+    featUl.innerHTML = '<li style="background:transparent;color:#64748b;">—</li>';
+  } else {
+    featUl.innerHTML = d.topFeatures.map(f =>
+      `<li><span>${f.feature}</span><span>${f.contribution >= 0 ? '+' : ''}${f.contribution.toFixed(2)}</span></li>`
+    ).join('');
+  }
+}
+</script>
+
+</body>
+</html>

@@ -1,0 +1,21 @@
+# Build output
+target/
+
+# H2 database
+data/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+.settings/
+.classpath
+.project
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+!data/trained-model.txt
