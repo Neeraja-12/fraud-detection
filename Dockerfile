@@ -9,6 +9,6 @@ RUN mvn clean package -DskipTests
 FROM eclipse-temurin:17-jre-alpine
 WORKDIR /app
 COPY --from=build /app/target/*.jar app.jar
-RUN mkdir -p /app/data
+COPY --from=build /app/data/trained-model.txt ./data/trained-model.txt
 EXPOSE 9090
 ENTRYPOINT ["java", "-jar", "app.jar"]
