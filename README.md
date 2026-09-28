@@ -14,3 +14,9 @@ A real-time fraud detection service built with **Java 17**, **Spring Boot 4.1.1*
 
 
 
+## Tests
+
+The project has 14 JUnit tests covering rule logic, feature extraction, and end-to-end scoring.
+
+```bash
+mvn test
