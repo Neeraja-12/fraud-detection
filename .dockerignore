@@ -1,0 +1,16 @@
+target/
+*.jar
+.git/
+.gitignore
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db
+data/fraudd*
+data/*.db
+data/*.trace
+README.md
+HELP.md
+.github/
+requests/

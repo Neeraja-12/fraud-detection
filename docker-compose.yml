@@ -1,0 +1,12 @@
+﻿services:
+  fraud-detection:
+    build: .
+    image: fraud-detection:latest
+    container_name: fraud-detection
+    ports:
+      - "9090:9090"
+    environment:
+      - APP_SECURITY_API_KEYS=demo-key-123,test-key-456
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped
