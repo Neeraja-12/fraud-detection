@@ -1,8 +1,9 @@
 # Build output
 target/
 
-# H2 database
-data/
+# H2 database (but keep the trained model)
+data/*
+!data/trained-model.txt
 
 # IDE
 .idea/
