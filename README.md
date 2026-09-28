@@ -20,3 +20,10 @@ The project has 14 JUnit tests covering rule logic, feature extraction, and end-
 
 ```bash
 mvn test
+
+## Run with Docker
+
+Requires [Docker Desktop](https://www.docker.com/products/docker-desktop/).
+
+```bash
+docker compose up
