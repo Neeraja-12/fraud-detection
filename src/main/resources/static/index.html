@@ -2,208 +2,587 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Fraud Detection Console</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Fraud Detection Console</title>
 <style>
-  * { box-sizing: border-box; }
-  body {
-    font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
-    margin: 0; padding: 0;
-    background: #0f172a; color: #e2e8f0;
-    min-height: 100vh;
+  :root {
+    --bg: #0a0f1c;
+    --panel: #111827;
+    --panel-2: #1a2332;
+    --border: #1f2937;
+    --text: #e5e7eb;
+    --text-dim: #94a3b8;
+    --accent: #38bdf8;
+    --green: #10b981;
+    --amber: #f59e0b;
+    --red: #ef4444;
+    --radius: 10px;
   }
-  header {
-    padding: 20px 32px;
-    background: #1e293b;
-    border-bottom: 1px solid #334155;
-  }
-  header h1 { margin: 0; font-size: 20px; font-weight: 600; }
-  header p  { margin: 4px 0 0; font-size: 13px; color: #94a3b8; }
 
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    line-height: 1.5;
+  }
+
+  /* ---------- header ---------- */
+  header {
+    padding: 18px 32px;
+    background: linear-gradient(180deg, #111827 0%, #0f172a 100%);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    backdrop-filter: blur(10px);
+  }
+  header h1 {
+    font-size: 18px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  header .sub {
+    font-size: 12px;
+    color: var(--text-dim);
+    margin-top: 2px;
+  }
+  .status-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--green);
+    box-shadow: 0 0 8px var(--green);
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+
+  /* ---------- layout ---------- */
   main {
     display: grid;
-    grid-template-columns: 420px 1fr;
+    grid-template-columns: 380px 1fr;
     gap: 20px;
     padding: 24px;
-    max-width: 1400px;
+    max-width: 1500px;
     margin: 0 auto;
   }
-  @media (max-width: 960px) { main { grid-template-columns: 1fr; } }
+  @media (max-width: 1000px) {
+    main { grid-template-columns: 1fr; }
+  }
 
   .card {
-    background: #1e293b;
-    border: 1px solid #334155;
-    border-radius: 10px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
     padding: 20px;
   }
   .card h2 {
-    margin: 0 0 16px; font-size: 15px;
-    text-transform: uppercase; letter-spacing: 0.5px;
-    color: #94a3b8;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-dim);
+    margin-bottom: 16px;
+    font-weight: 600;
   }
 
-  label { display: block; font-size: 12px; margin: 12px 0 4px; color: #94a3b8; }
+  /* ---------- form ---------- */
+  label {
+    display: block;
+    font-size: 11px;
+    color: var(--text-dim);
+    margin: 12px 0 4px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
   input, select {
-    width: 100%; padding: 9px 11px;
-    background: #0f172a; color: #e2e8f0;
-    border: 1px solid #334155; border-radius: 6px;
-    font-size: 13px; font-family: inherit;
+    width: 100%;
+    padding: 10px 12px;
+    background: var(--bg);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 13px;
+    font-family: inherit;
+    transition: border-color 0.15s;
   }
-  input:focus, select:focus { outline: none; border-color: #38bdf8; }
-
+  input:focus, select:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.1);
+  }
   .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 
-  button {
-    width: 100%; padding: 11px;
+  /* ---------- buttons ---------- */
+  .btn {
+    width: 100%;
+    padding: 12px;
     margin-top: 18px;
-    background: #38bdf8; color: #0f172a;
-    border: none; border-radius: 6px;
-    font-size: 14px; font-weight: 600; cursor: pointer;
+    background: linear-gradient(135deg, var(--accent), #0ea5e9);
+    color: #0a0f1c;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    letter-spacing: 0.3px;
+    transition: all 0.15s;
   }
-  button:hover { background: #7dd3fc; }
-  button:disabled { background: #475569; cursor: wait; }
+  .btn:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 20px rgba(56, 189, 248, 0.4);
+  }
+  .btn:disabled { opacity: 0.6; cursor: wait; }
+  .btn-reset {
+    background: transparent;
+    color: var(--text-dim);
+    border: 1px solid var(--border);
+    margin-top: 8px;
+    font-size: 12px;
+    padding: 8px;
+    font-weight: 500;
+  }
+  .btn-reset:hover { color: var(--text); border-color: var(--text-dim); }
 
   .presets { display: flex; gap: 8px; margin-top: 12px; }
   .presets button {
-    margin-top: 0; font-size: 12px; padding: 7px;
-    background: #334155; color: #cbd5e1;
+    flex: 1;
+    margin-top: 0;
+    font-size: 12px;
+    padding: 9px 6px;
+    background: var(--panel-2);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
   }
-  .presets button:hover { background: #475569; }
+  .presets button:hover {
+    background: #263041;
+    border-color: var(--accent);
+    color: var(--accent);
+  }
 
-  /* --- result panel --- */
-  .decision {
-    padding: 24px; border-radius: 10px; text-align: center;
+  /* ---------- stats grid ---------- */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
     margin-bottom: 20px;
   }
-  .decision .label { font-size: 13px; text-transform: uppercase; letter-spacing: 1.5px; opacity: 0.8; }
-  .decision .value { font-size: 42px; font-weight: 800; margin: 6px 0; letter-spacing: 2px; }
-  .decision .meta  { font-size: 13px; opacity: 0.9; }
-
-  .decision.ALLOW  { background: linear-gradient(135deg,#065f46,#10b981); }
-  .decision.REVIEW { background: linear-gradient(135deg,#78350f,#f59e0b); }
-  .decision.BLOCK  { background: linear-gradient(135deg,#7f1d1d,#ef4444); }
-  .decision.none   { background: #1e293b; border: 1px dashed #334155; opacity: 0.6; }
-
-  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px; }
-  .stat {
-    background: #0f172a; padding: 12px; border-radius: 8px;
-    border: 1px solid #334155; text-align: center;
+  @media (max-width: 700px) {
+    .stats-grid { grid-template-columns: repeat(2, 1fr); }
   }
-  .stat .n { font-size: 22px; font-weight: 700; }
-  .stat .l { font-size: 11px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; }
-
-  .rules li {
-    list-style: none; padding: 10px 12px; margin-bottom: 6px;
-    background: #0f172a; border-left: 3px solid #ef4444;
-    border-radius: 4px; font-size: 13px;
+  .stat-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    position: relative;
+    overflow: hidden;
   }
-  .rules li .name { font-weight: 600; color: #f87171; }
-  .rules li .detail { color: #94a3b8; margin-left: 6px; }
-
-  .features li {
-    list-style: none; display: flex; justify-content: space-between;
-    padding: 8px 12px; margin-bottom: 4px;
-    background: #0f172a; border-radius: 4px; font-size: 13px;
+  .stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: var(--accent);
   }
-  .features li span:last-child { color: #38bdf8; font-family: monospace; }
+  .stat-card.allowed::before { background: var(--green); }
+  .stat-card.reviewed::before { background: var(--amber); }
+  .stat-card.blocked::before { background: var(--red); }
+  .stat-card .value {
+    font-size: 32px;
+    font-weight: 800;
+    letter-spacing: -1px;
+    line-height: 1;
+  }
+  .stat-card .label {
+    font-size: 11px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-top: 6px;
+    font-weight: 600;
+  }
 
+  /* ---------- decision panel ---------- */
+  .decision-panel {
+    padding: 32px;
+    border-radius: var(--radius);
+    text-align: center;
+    margin-bottom: 20px;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+  }
+  .decision-panel.none {
+    background: var(--panel);
+    border: 1px dashed var(--border);
+    color: var(--text-dim);
+  }
+  .decision-panel.ALLOW {
+    background: linear-gradient(135deg, #064e3b, #10b981);
+    box-shadow: 0 8px 32px rgba(16, 185, 129, 0.3);
+  }
+  .decision-panel.REVIEW {
+    background: linear-gradient(135deg, #78350f, #f59e0b);
+    box-shadow: 0 8px 32px rgba(245, 158, 11, 0.3);
+  }
+  .decision-panel.BLOCK {
+    background: linear-gradient(135deg, #7f1d1d, #ef4444);
+    box-shadow: 0 8px 32px rgba(239, 68, 68, 0.3);
+    animation: shake 0.4s;
+  }
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-4px); }
+    75% { transform: translateX(4px); }
+  }
+
+  .decision-panel .decision-label {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    opacity: 0.85;
+    font-weight: 600;
+  }
+  .decision-panel .decision-value {
+    font-size: 44px;
+    font-weight: 900;
+    margin: 8px 0;
+    letter-spacing: 3px;
+  }
+  .decision-panel .decision-meta {
+    font-size: 13px;
+    opacity: 0.9;
+    font-family: ui-monospace, monospace;
+  }
+
+  /* ---------- metrics row ---------- */
+  .metrics-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .metric {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px;
+    text-align: center;
+  }
+  .metric .value { font-size: 20px; font-weight: 700; }
+  .metric .label {
+    font-size: 10px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-top: 4px;
+  }
+
+  /* ---------- rule hits ---------- */
+  .rules-list, .features-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .rules-list li {
+    padding: 10px 14px;
+    background: var(--bg);
+    border-left: 3px solid var(--red);
+    border-radius: 4px;
+    font-size: 12px;
+    display: flex;
+    gap: 8px;
+    align-items: baseline;
+  }
+  .rules-list li .rule-name {
+    font-weight: 700;
+    color: #fca5a5;
+    min-width: 130px;
+    font-family: ui-monospace, monospace;
+  }
+  .rules-list li .rule-detail { color: var(--text-dim); }
+
+  .features-list li {
+    padding: 8px 12px;
+    background: var(--bg);
+    border-radius: 4px;
+    font-size: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .features-list li .feat-name {
+    font-family: ui-monospace, monospace;
+    color: var(--text-dim);
+  }
+  .features-list li .feat-val {
+    font-family: ui-monospace, monospace;
+    font-weight: 700;
+    color: var(--accent);
+  }
+  .features-list li .feat-val.neg { color: var(--green); }
+
+  /* ---------- log feed ---------- */
+  .log-feed {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 300px;
+    overflow-y: auto;
+  }
+  .log-item {
+    padding: 10px 14px;
+    background: var(--bg);
+    border-radius: 6px;
+    border-left: 3px solid var(--border);
+    font-size: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    animation: slideIn 0.3s ease-out;
+  }
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(-8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .log-item.ALLOW { border-left-color: var(--green); }
+  .log-item.REVIEW { border-left-color: var(--amber); }
+  .log-item.BLOCK { border-left-color: var(--red); }
+  .log-item .log-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .log-item .log-id {
+    font-family: ui-monospace, monospace;
+    color: var(--text-dim);
+    font-size: 11px;
+  }
+  .log-item .log-amount {
+    font-weight: 600;
+  }
+  .log-item .log-decision {
+    font-weight: 700;
+    font-size: 11px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    letter-spacing: 0.5px;
+  }
+  .log-item.ALLOW .log-decision { background: rgba(16, 185, 129, 0.2); color: #6ee7b7; }
+  .log-item.REVIEW .log-decision { background: rgba(245, 158, 11, 0.2); color: #fcd34d; }
+  .log-item.BLOCK .log-decision { background: rgba(239, 68, 68, 0.2); color: #fca5a5; }
+
+  .empty-state {
+    padding: 24px;
+    text-align: center;
+    color: var(--text-dim);
+    font-size: 12px;
+    background: var(--bg);
+    border-radius: 6px;
+  }
+
+  /* ---------- error ---------- */
   .error {
-    padding: 12px; background: #7f1d1d; border-radius: 6px;
-    font-size: 13px; color: #fecaca;
+    padding: 12px 14px;
+    background: rgba(127, 29, 29, 0.3);
+    border: 1px solid var(--red);
+    border-radius: 6px;
+    font-size: 12px;
+    color: #fecaca;
+    margin-top: 12px;
   }
+
+  /* ---------- spinner ---------- */
+  .spinner {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 2px solid rgba(10, 15, 28, 0.3);
+    border-top-color: #0a0f1c;
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+    vertical-align: middle;
+    margin-right: 6px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ---------- scrollbar ---------- */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
 </style>
 </head>
 <body>
 
 <header>
-  <h1>🛡️ AI Banking Fraud Detection</h1>
-  <p>Live scoring console &mdash; enter a transaction and get an instant fraud decision</p>
+  <div>
+    <h1>🛡️ AI Banking Fraud Detection</h1>
+    <div class="sub">Real-time scoring · trained logistic regression · 13 rules · full explainability</div>
+  </div>
+  <div style="font-size: 11px; color: var(--text-dim); display: flex; align-items: center; gap: 6px;">
+    <span class="status-dot"></span> LIVE
+  </div>
 </header>
 
 <main>
 
-  <!-- LEFT: input form -->
-  <section class="card">
-    <h2>Transaction</h2>
+  <!-- LEFT: form -->
+  <section>
+    <div class="card">
+      <h2>Transaction</h2>
 
-    <label>API Key</label>
-    <input id="apiKey" value="demo-key-123">
+      <label>API Key</label>
+      <input id="apiKey" value="demo-key-123">
 
-    <label>Customer ID</label>
-    <input id="customerId" value="alice">
+      <label>Customer ID</label>
+      <input id="customerId" value="rajesh">
 
-    <div class="row">
-      <div>
-        <label>Amount</label>
-        <input id="amount" type="number" step="0.01" value="52.30">
+      <div class="row">
+        <div>
+          <label>Amount (₹)</label>
+          <input id="amount" type="number" step="0.01" value="2500">
+        </div>
+        <div>
+          <label>MCC</label>
+          <input id="mcc" value="5411">
+        </div>
       </div>
-      <div>
-        <label>MCC</label>
-        <input id="mcc" value="5411">
-      </div>
-    </div>
 
-    <div class="row">
-      <div>
-        <label>Latitude</label>
-        <input id="lat" type="number" step="0.0001" value="40.7128">
+      <div class="row">
+        <div>
+          <label>Latitude</label>
+          <input id="lat" type="number" step="0.0001" value="19.0760">
+        </div>
+        <div>
+          <label>Longitude</label>
+          <input id="lon" type="number" step="0.0001" value="72.8777">
+        </div>
       </div>
-      <div>
-        <label>Longitude</label>
-        <input id="lon" type="number" step="0.0001" value="-74.0060">
+
+      <div class="row">
+        <div>
+          <label>Device ID</label>
+          <input id="deviceId" value="rajesh-phone">
+        </div>
+        <div>
+          <label>Country</label>
+          <input id="country" value="IN" maxlength="3">
+        </div>
       </div>
-    </div>
 
-    <div class="row">
-      <div>
-        <label>Device ID</label>
-        <input id="deviceId" value="alice-phone">
+      <label>Card Present?</label>
+      <select id="cardPresent">
+        <option value="true">Yes</option>
+        <option value="false">No (card-not-present)</option>
+      </select>
+
+      <button class="btn" id="scoreBtn" onclick="score()">Score Transaction</button>
+
+      <div class="presets">
+        <button onclick="preset('normal')">Normal</button>
+        <button onclick="preset('suspicious')">Suspicious</button>
+        <button onclick="preset('fraud')">Fraud</button>
       </div>
-      <div>
-        <label>Country</label>
-        <input id="country" value="US" maxlength="3">
-      </div>
-    </div>
 
-    <label>Card Present?</label>
-    <select id="cardPresent">
-      <option value="true">Yes</option>
-      <option value="false">No (card-not-present)</option>
-    </select>
-
-    <button id="scoreBtn" onclick="score()">Score Transaction</button>
-
-    <div class="presets">
-      <button onclick="preset('normal')">Normal</button>
-      <button onclick="preset('suspicious')">Suspicious</button>
-      <button onclick="preset('fraud')">Fraud</button>
+      <button class="btn btn-reset" onclick="resetAll()">Clear log & stats</button>
     </div>
   </section>
 
-  <!-- RIGHT: result -->
+  <!-- RIGHT: results -->
   <section>
-    <div class="card">
-      <h2>Decision</h2>
 
-      <div id="decision" class="decision none">
-        <div class="label">Awaiting input</div>
-        <div class="value">—</div>
-        <div class="meta">Click "Score Transaction"</div>
+    <!-- stats -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="value" id="statTotal">0</div>
+        <div class="label">Total</div>
       </div>
-
-      <div class="stats">
-        <div class="stat"><div class="n" id="riskPts">—</div><div class="l">Risk Points</div></div>
-        <div class="stat"><div class="n" id="mlProb">—</div><div class="l">ML Prob</div></div>
-        <div class="stat"><div class="n" id="ruleScore">—</div><div class="l">Rule Score</div></div>
+      <div class="stat-card allowed">
+        <div class="value" id="statAllowed" style="color: var(--green);">0</div>
+        <div class="label">Allowed</div>
       </div>
-
-      <div id="errorBox" class="error" style="display:none;"></div>
-
-      <h2 style="margin-top:24px;">Rule Hits</h2>
-      <ul id="rules" class="rules"><li style="border:none;background:transparent;color:#64748b;">None</li></ul>
-
-      <h2 style="margin-top:24px;">Top Model Features</h2>
-      <ul id="features" class="features"><li style="background:transparent;color:#64748b;">—</li></ul>
+      <div class="stat-card reviewed">
+        <div class="value" id="statReviewed" style="color: var(--amber);">0</div>
+        <div class="label">Reviewed</div>
+      </div>
+      <div class="stat-card blocked">
+        <div class="value" id="statBlocked" style="color: var(--red);">0</div>
+        <div class="label">Blocked</div>
+      </div>
     </div>
+
+    <!-- decision -->
+    <div id="decisionPanel" class="decision-panel none">
+      <div class="decision-label">Awaiting input</div>
+      <div class="decision-value">—</div>
+      <div class="decision-meta">Click a preset or enter a transaction</div>
+    </div>
+
+    <div id="errorBox" class="error" style="display: none;"></div>
+
+    <!-- metrics -->
+    <div class="card" style="margin-bottom: 20px;">
+      <h2>Risk Breakdown</h2>
+      <div class="metrics-row">
+        <div class="metric">
+          <div class="value" id="metricRisk">—</div>
+          <div class="label">Risk Points</div>
+        </div>
+        <div class="metric">
+          <div class="value" id="metricMl">—</div>
+          <div class="label">ML Prob</div>
+        </div>
+        <div class="metric">
+          <div class="value" id="metricRule">—</div>
+          <div class="label">Rule Score</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- rule hits -->
+    <div class="card" style="margin-bottom: 20px;">
+      <h2>Rule Hits</h2>
+      <ul id="rules" class="rules-list">
+        <li style="border-left-color: var(--border); color: var(--text-dim);">
+          <span>No rules triggered yet</span>
+        </li>
+      </ul>
+    </div>
+
+    <!-- features -->
+    <div class="card" style="margin-bottom: 20px;">
+      <h2>Top Model Features</h2>
+      <ul id="features" class="features-list">
+        <li style="color: var(--text-dim);">—</li>
+      </ul>
+    </div>
+
+    <!-- log feed -->
+    <div class="card">
+      <h2>Recent Transactions</h2>
+      <div id="logFeed" class="log-feed">
+        <div class="empty-state">No transactions yet — score one to see it here.</div>
+      </div>
+    </div>
+
   </section>
 
 </main>
@@ -211,31 +590,56 @@
 <script>
 const $ = id => document.getElementById(id);
 
+// ------- stats state -------
+const stats = { total: 0, allowed: 0, reviewed: 0, blocked: 0 };
+
+function updateStats(decision) {
+  stats.total++;
+  if (decision === 'ALLOW')  stats.allowed++;
+  if (decision === 'REVIEW') stats.reviewed++;
+  if (decision === 'BLOCK')  stats.blocked++;
+  $('statTotal').textContent    = stats.total;
+  $('statAllowed').textContent  = stats.allowed;
+  $('statReviewed').textContent = stats.reviewed;
+  $('statBlocked').textContent  = stats.blocked;
+}
+
+// ------- presets -------
 function preset(kind) {
   if (kind === 'normal') {
     $('customerId').value = 'rajesh';
-    $('amount').value = 2500.00;  $('mcc').value = '5411';
-    $('lat').value = 19.0760;     $('lon').value = 72.8777;
-    $('deviceId').value = 'rajesh-phone';  $('country').value = 'IN';
+    $('amount').value = 2500.00;
+    $('mcc').value = '5411';
+    $('lat').value = 19.0760; $('lon').value = 72.8777;
+    $('deviceId').value = 'rajesh-phone';
+    $('country').value = 'IN';
     $('cardPresent').value = 'true';
   } else if (kind === 'suspicious') {
     $('customerId').value = 'priya';
-    $('amount').value = 15000.00; $('mcc').value = '5411';
-    $('lat').value = 28.6139;     $('lon').value = 77.2090;   // Delhi
-    $('deviceId').value = 'priya-phone';  $('country').value = 'IN';
+    $('amount').value = 30000.00;
+    $('mcc').value = '5411';
+    $('lat').value = 28.6139; $('lon').value = 77.2090;
+    $('deviceId').value = 'priya-phone';
+    $('country').value = 'IN';
     $('cardPresent').value = 'false';
   } else {
     $('customerId').value = 'vikram';
-    $('amount').value = 85000.00; $('mcc').value = '6051';
-    $('lat').value = 51.5074;     $('lon').value = -0.1278;
-    $('deviceId').value = 'unknown-device'; $('country').value = 'GB';
+    $('amount').value = 85000.00;
+    $('mcc').value = '6051';
+    $('lat').value = 51.5074; $('lon').value = -0.1278;
+    $('deviceId').value = 'unknown-device';
+    $('country').value = 'GB';
     $('cardPresent').value = 'false';
   }
+  // Auto-score
+  score();
 }
+
+// ------- score -------
 async function score() {
   const btn = $('scoreBtn');
   btn.disabled = true;
-  btn.textContent = 'Scoring…';
+  btn.innerHTML = '<span class="spinner"></span>Scoring...';
   $('errorBox').style.display = 'none';
 
   const body = {
@@ -269,6 +673,8 @@ async function score() {
 
     const data = await res.json();
     render(data);
+    updateStats(data.decision);
+    addToLog(data);
   } catch (e) {
     $('errorBox').style.display = 'block';
     $('errorBox').textContent = '⚠ ' + e.message;
@@ -278,38 +684,88 @@ async function score() {
   }
 }
 
+// ------- render -------
 function render(d) {
-  const box = $('decision');
-  box.className = 'decision ' + d.decision;
-  box.innerHTML = `
-    <div class="label">${d.decision === 'ALLOW' ? 'Approved' :
-                        d.decision === 'REVIEW' ? 'Manual Review' :
-                        'Blocked'}</div>
-    <div class="value">${d.decision}</div>
-    <div class="meta">${d.txnId}</div>
+  const panel = $('decisionPanel');
+  panel.className = 'decision-panel ' + d.decision;
+  panel.innerHTML = `
+    <div class="decision-label">${d.decision === 'ALLOW' ? 'Transaction Approved' :
+                                d.decision === 'REVIEW' ? 'Manual Review Required' :
+                                'Transaction Blocked'}</div>
+    <div class="decision-value">${d.decision}</div>
+    <div class="decision-meta">${d.txnId}</div>
   `;
 
-  $('riskPts').textContent   = d.riskPoints;
-  $('mlProb').textContent    = (d.mlProbability * 100).toFixed(1) + '%';
-  $('ruleScore').textContent = (d.ruleScore * 100).toFixed(1) + '%';
+  $('metricRisk').textContent = d.riskPoints + ' / 100';
+  $('metricMl').textContent   = (d.mlProbability * 100).toFixed(1) + '%';
+  $('metricRule').textContent = (d.ruleScore * 100).toFixed(1) + '%';
 
   const rulesUl = $('rules');
   if (!d.ruleHits || d.ruleHits.length === 0) {
-    rulesUl.innerHTML = '<li style="border:none;background:transparent;color:#64748b;">No rules triggered</li>';
+    rulesUl.innerHTML = '<li style="border-left-color: var(--green); color: var(--green);"><span>✓ No rules triggered</span></li>';
   } else {
     rulesUl.innerHTML = d.ruleHits.map(r =>
-      `<li><span class="name">${r.rule}</span><span class="detail">${r.detail}</span></li>`
+      `<li><span class="rule-name">${r.rule}</span><span class="rule-detail">${r.detail}</span></li>`
     ).join('');
   }
 
   const featUl = $('features');
   if (!d.topFeatures || d.topFeatures.length === 0) {
-    featUl.innerHTML = '<li style="background:transparent;color:#64748b;">—</li>';
+    featUl.innerHTML = '<li style="color: var(--text-dim);">—</li>';
   } else {
-    featUl.innerHTML = d.topFeatures.map(f =>
-      `<li><span>${f.feature}</span><span>${f.contribution >= 0 ? '+' : ''}${f.contribution.toFixed(2)}</span></li>`
-    ).join('');
+    featUl.innerHTML = d.topFeatures.map(f => {
+      const cls = f.contribution < 0 ? 'feat-val neg' : 'feat-val';
+      const sign = f.contribution >= 0 ? '+' : '';
+      return `<li><span class="feat-name">${f.feature}</span><span class="${cls}">${sign}${f.contribution.toFixed(2)}</span></li>`;
+    }).join('');
   }
+}
+
+// ------- log -------
+function addToLog(d) {
+  const feed = $('logFeed');
+  if (feed.querySelector('.empty-state')) feed.innerHTML = '';
+
+  const item = document.createElement('div');
+  item.className = 'log-item ' + d.decision;
+
+  const time = new Date().toLocaleTimeString('en-IN', { hour12: false });
+  item.innerHTML = `
+    <div class="log-meta">
+      <span class="log-id">${d.txnId}</span>
+      <span class="log-amount">₹${parseFloat($('amount').value).toLocaleString('en-IN')} · ${time}</span>
+    </div>
+    <div class="log-decision">${d.decision} · ${d.riskPoints}</div>
+  `;
+  feed.insertBefore(item, feed.firstChild);
+
+  // keep max 20
+  while (feed.children.length > 20) feed.removeChild(feed.lastChild);
+}
+
+// ------- reset -------
+function resetAll() {
+  stats.total = 0; stats.allowed = 0; stats.reviewed = 0; stats.blocked = 0;
+  $('statTotal').textContent = 0;
+  $('statAllowed').textContent = 0;
+  $('statReviewed').textContent = 0;
+  $('statBlocked').textContent = 0;
+
+  $('decisionPanel').className = 'decision-panel none';
+  $('decisionPanel').innerHTML = `
+    <div class="decision-label">Awaiting input</div>
+    <div class="decision-value">—</div>
+    <div class="decision-meta">Click a preset or enter a transaction</div>
+  `;
+
+  $('metricRisk').textContent = '—';
+  $('metricMl').textContent = '—';
+  $('metricRule').textContent = '—';
+
+  $('rules').innerHTML = '<li style="border-left-color: var(--border); color: var(--text-dim);"><span>No rules triggered yet</span></li>';
+  $('features').innerHTML = '<li style="color: var(--text-dim);">—</li>';
+  $('logFeed').innerHTML = '<div class="empty-state">No transactions yet — score one to see it here.</div>';
+  $('errorBox').style.display = 'none';
 }
 </script>
 
