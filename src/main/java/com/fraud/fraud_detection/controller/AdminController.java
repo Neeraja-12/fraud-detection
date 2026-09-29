@@ -1,28 +1,30 @@
 package com.fraud.fraud_detection.controller;
 
 import com.fraud.fraud_detection.ml.TrainingPipeline;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import com.fraud.fraud_detection.model.AuditLog;
+import com.fraud.fraud_detection.model.Decision;
+import com.fraud.fraud_detection.persistence.AuditLogRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
-/**
- * Admin endpoints. Requires X-API-Key (same as everything else under /api/**).
- * In production, gate these behind a separate admin key or role.
- */
 @RestController
 @RequestMapping("/api/admin")
 public class AdminController {
 
     private final TrainingPipeline pipeline;
+    private final AuditLogRepository auditRepo;
 
-    public AdminController(TrainingPipeline pipeline) {
+    public AdminController(TrainingPipeline pipeline, AuditLogRepository auditRepo) {
         this.pipeline = pipeline;
+        this.auditRepo = auditRepo;
     }
 
-    /** Trigger end-to-end training. Saves ./data/trained-model.txt. */
     @PostMapping("/train")
     public Map<String, Object> train() {
         long t0 = System.currentTimeMillis();
@@ -45,7 +47,6 @@ public class AdminController {
         return out;
     }
 
-    /** Check if a trained model file exists on disk. */
     @PostMapping("/model-info")
     public Map<String, Object> modelInfo() {
         TrainingPipeline.LoadedModel m = TrainingPipeline.load();
@@ -58,5 +59,67 @@ public class AdminController {
             out.put("summary", m.summary());
         }
         return out;
+    }
+
+    // -------- Audit log endpoints --------
+
+    @GetMapping("/audit")
+    public Map<String, Object> audit(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "50") int size,
+            @RequestParam(required = false) String decision) {
+
+        Pageable pageable = PageRequest.of(page, Math.min(size, 200));
+        Page<AuditLog> result;
+        if (decision != null && !decision.isBlank()) {
+            try {
+                result = auditRepo.findByDecisionOrderByEventTimestampDesc(
+                        Decision.valueOf(decision.toUpperCase()), pageable);
+            } catch (IllegalArgumentException e) {
+                return Map.of("error", "Invalid decision: " + decision);
+            }
+        } else {
+            result = auditRepo.findAllByOrderByEventTimestampDesc(pageable);
+        }
+
+        List<Map<String, Object>> items = result.getContent().stream()
+                .map(this::toMap)
+                .toList();
+
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("items", items);
+        out.put("page", result.getNumber());
+        out.put("size", result.getSize());
+        out.put("totalItems", result.getTotalElements());
+        out.put("totalPages", result.getTotalPages());
+        return out;
+    }
+
+    @GetMapping("/audit/stats")
+    public Map<String, Object> auditStats() {
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("total", auditRepo.count());
+        out.put("allowed", auditRepo.countByDecision(Decision.ALLOW));
+        out.put("reviewed", auditRepo.countByDecision(Decision.REVIEW));
+        out.put("blocked", auditRepo.countByDecision(Decision.BLOCK));
+        return out;
+    }
+
+    private Map<String, Object> toMap(AuditLog a) {
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("id", a.getId());
+        m.put("txnId", a.getTxnId());
+        m.put("customerId", a.getCustomerId());
+        m.put("amount", a.getAmount());
+        m.put("countryCode", a.getCountryCode());
+        m.put("merchantCategory", a.getMerchantCategory());
+        m.put("decision", a.getDecision().name());
+        m.put("riskPoints", a.getRiskPoints());
+        m.put("mlProbability", a.getMlProbability());
+        m.put("ruleScore", a.getRuleScore());
+        m.put("rulesFired", a.getRulesFired());
+        m.put("modelVersion", a.getModelVersion());
+        m.put("timestamp", a.getEventTimestamp().toString());
+        return m;
     }
 }

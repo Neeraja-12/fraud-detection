@@ -3,6 +3,7 @@ package com.fraud.fraud_detection.engine;
 import com.fraud.fraud_detection.model.CustomerProfile;
 import com.fraud.fraud_detection.model.Decision;
 import com.fraud.fraud_detection.model.Transaction;
+import com.fraud.fraud_detection.persistence.AuditLogRepository;
 import com.fraud.fraud_detection.persistence.CustomerProfileRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -23,11 +24,16 @@ class FraudDetectionEngineTest {
     @BeforeEach
     void setUp() {
         CustomerProfileRepository repo = mock(CustomerProfileRepository.class);
+        AuditLogRepository auditRepo = mock(AuditLogRepository.class);
+
         storedProfile = new CustomerProfile("C1", 19.0760, 72.8777, "IN", 900);
         storedProfile.addKnownDevice("known-phone");
+
         when(repo.findById(anyString())).thenReturn(Optional.of(storedProfile));
         when(repo.save(any(CustomerProfile.class))).thenAnswer(i -> i.getArguments()[0]);
-        engine = new FraudDetectionEngine(repo);
+        when(auditRepo.save(any())).thenAnswer(i -> i.getArguments()[0]);
+
+        engine = new FraudDetectionEngine(repo, auditRepo);
         engine.init();
     }
 
